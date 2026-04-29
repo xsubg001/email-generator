@@ -118,13 +118,17 @@
             font-size: 18px;
             font-weight: 600;
             color: #333;
-            word-break: break-all;
         }
         
         .copy-btn {
-            width: auto;
             padding: 8px 16px;
+            background: #28a745;
             font-size: 14px;
+        }
+        
+        .copy-btn:hover {
+            background: #218838;
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
         }
         
         .history {
@@ -139,8 +143,6 @@
         
         .email-list {
             list-style: none;
-            max-height: 200px;
-            overflow-y: auto;
         }
         
         .email-item {
@@ -151,27 +153,17 @@
             background: #f8f9fa;
             border-radius: 8px;
             margin-bottom: 10px;
-            gap: 10px;
         }
         
         .email-item-email {
             color: #555;
             font-size: 14px;
-            word-break: break-all;
-            flex: 1;
         }
         
         .email-item-copy {
-            width: auto;
             padding: 6px 12px;
             font-size: 12px;
             background: #6c757d;
-        }
-        
-        .empty-state {
-            text-align: center;
-            color: #888;
-            padding: 20px;
         }
     </style>
 </head>
@@ -199,31 +191,16 @@
             </div>
         </div>
         
-        <div class="history">
+        <div class="history" id="history">
             <h2>Recent Emails</h2>
-            <ul class="email-list" id="emailList">
-                <li class="empty-state">No emails generated yet</li>
-            </ul>
+            <ul class="email-list" id="emailList"></ul>
         </div>
     </div>
     
     <script>
-        const STORAGE_KEY = 'generated_emails';
         let lastGeneratedEmail = '';
         
-        // Load emails from localStorage
-        function getEmails() {
-            const data = localStorage.getItem(STORAGE_KEY);
-            return data ? JSON.parse(data) : [];
-        }
-        
-        // Save emails to localStorage
-        function saveEmails(emails) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(emails));
-        }
-        
-        // Generate email
-        function generateEmail() {
+        async function generateEmail() {
             const name = document.getElementById('name').value.trim();
             const domain = document.getElementById('domain').value.trim();
             
@@ -232,38 +209,28 @@
                 return;
             }
             
-            // Convert name to email format (lowercase, replace spaces with dots)
-            const email = name.toLowerCase().replace(/\s+/g, '.') + '@' + domain;
-            
-            // Get existing emails
-            const emails = getEmails();
-            
-            // Add new email at the beginning
-            emails.unshift({
-                email: email,
-                name: name,
-                domain: domain,
-                createdAt: new Date().toISOString()
-            });
-            
-            // Keep only last 50 emails
-            if (emails.length > 50) {
-                emails.splice(50);
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, domain })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    lastGeneratedEmail = data.email;
+                    document.getElementById('emailText').textContent = data.email;
+                    document.getElementById('result').classList.add('show');
+                    loadEmails();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (err) {
+                alert('Failed to generate email');
             }
-            
-            // Save to localStorage
-            saveEmails(emails);
-            
-            // Display result
-            lastGeneratedEmail = email;
-            document.getElementById('emailText').textContent = email;
-            document.getElementById('result').classList.add('show');
-            
-            // Update the list
-            renderEmailList();
         }
         
-        // Copy email to clipboard
         function copyEmail() {
             navigator.clipboard.writeText(lastGeneratedEmail).then(() => {
                 const btn = document.querySelector('.copy-btn');
@@ -272,36 +239,31 @@
             });
         }
         
-        // Copy from list
+        async function loadEmails() {
+            try {
+                const response = await fetch('/api/emails');
+                const emails = await response.json();
+                
+                const list = document.getElementById('emailList');
+                list.innerHTML = emails.slice(0, 5).map(email => `
+                    <li class="email-item">
+                        <span class="email-item-email">${email.email}</span>
+                        <button class="copy-btn" onclick="copyFromList('${email.email}')">Copy</button>
+                    </li>
+                `).join('');
+            } catch (err) {
+                console.error('Failed to load emails');
+            }
+        }
+        
         function copyFromList(email) {
             navigator.clipboard.writeText(email).then(() => {
-                const btn = event.target;
-                const originalText = btn.textContent;
-                btn.textContent = 'Copied!';
-                setTimeout(() => btn.textContent = originalText, 2000);
+                alert('Copied: ' + email);
             });
         }
         
-        // Render email list
-        function renderEmailList() {
-            const emails = getEmails();
-            const list = document.getElementById('emailList');
-            
-            if (emails.length === 0) {
-                list.innerHTML = '<li class="empty-state">No emails generated yet</li>';
-                return;
-            }
-            
-            list.innerHTML = emails.map((item, index) => `
-                <li class="email-item">
-                    <span class="email-item-email">${item.email}</span>
-                    <button class="copy-btn email-item-copy" onclick="copyFromList('${item.email}')">Copy</button>
-                </li>
-            `).join('');
-        }
-        
         // Load emails on page load
-        renderEmailList();
+        loadEmails();
     </script>
 </body>
 </html>
