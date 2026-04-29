@@ -47,16 +47,17 @@
             font-weight: 500;
         }
         
-        input {
+        input, select {
             width: 100%;
             padding: 12px 16px;
             border: 2px solid #e1e1e1;
             border-radius: 8px;
             font-size: 16px;
             transition: border-color 0.3s;
+            background: white;
         }
         
-        input:focus {
+        input:focus, select:focus {
             outline: none;
             border-color: #667eea;
         }
@@ -118,17 +119,13 @@
             font-size: 18px;
             font-weight: 600;
             color: #333;
+            word-break: break-all;
         }
         
         .copy-btn {
+            width: auto;
             padding: 8px 16px;
-            background: #28a745;
             font-size: 14px;
-        }
-        
-        .copy-btn:hover {
-            background: #218838;
-            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
         }
         
         .history {
@@ -143,6 +140,8 @@
         
         .email-list {
             list-style: none;
+            max-height: 200px;
+            overflow-y: auto;
         }
         
         .email-item {
@@ -153,16 +152,139 @@
             background: #f8f9fa;
             border-radius: 8px;
             margin-bottom: 10px;
+            gap: 10px;
         }
         
         .email-item-email {
             color: #555;
             font-size: 14px;
+            word-break: break-all;
+            flex: 1;
         }
         
         .email-item-copy {
+            width: auto;
             padding: 6px 12px;
             font-size: 12px;
+            background: #6c757d;
+        }
+        
+        .email-item-delete {
+            background: #dc3545;
+        }
+        
+        .email-item-delete:hover {
+            background: #c82333;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: #888;
+            padding: 20px;
+        }
+        
+        .export-btn {
+            background: #28a745;
+            margin-top: 10px;
+        }
+        
+        .export-btn:hover {
+            background: #218838;
+            box-shadow: 0 8px 20px rgba(40, 167, 69, 0.4);
+        }
+        
+        .edit-domains-btn {
+            background: #6c757d;
+            margin-top: 10px;
+        }
+        
+        .edit-domains-btn:hover {
+            background: #5a6268;
+            box-shadow: 0 8px 20px rgba(108, 117, 125, 0.4);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal.show {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+        }
+        
+        .modal:hover {
+            cursor: pointer;
+        }
+        
+        .modal-content:hover {
+            cursor: default;
+        }
+        
+        .modal-content h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .domain-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+        
+        .domain-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .domain-item span {
+            flex: 1;
+        }
+        
+        .domain-item button {
+            width: auto;
+            padding: 6px 12px;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+        
+        .delete-btn {
+            background: #dc3545;
+        }
+        
+        .delete-btn:hover {
+            background: #c82333;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .modal-buttons button {
+            flex: 1;
+        }
+        
+        .cancel-btn {
             background: #6c757d;
         }
     </style>
@@ -178,7 +300,12 @@
         
         <div class="form-group">
             <label for="domain">Domain</label>
-            <input type="text" id="domain" placeholder="Enter domain (e.g., example.com)">
+            <select id="domain">
+                <option value="">Select domain...</option>
+                <option value="gmail.com">gmail.com</option>
+                <option value="outlook.com">outlook.com</option>
+                <option value="seznam.cz">seznam.cz</option>
+            </select>
         </div>
         
         <button onclick="generateEmail()">Generate Email</button>
@@ -191,46 +318,108 @@
             </div>
         </div>
         
-        <div class="history" id="history">
+        <div class="history">
             <h2>Recent Emails</h2>
-            <ul class="email-list" id="emailList"></ul>
+            <ul class="email-list" id="emailList">
+                <li class="empty-state">No emails generated yet</li>
+            </ul>
+            <button class="export-btn" onclick="exportEmails()">📥 Export All Emails</button>
+            <button class="edit-domains-btn" onclick="openDomainEditor()">⚙️ Edit Domains</button>
+            <button class="edit-domains-btn" id="deleteModeBtn" onclick="toggleDeleteMode()">🗑️ Delete Mode</button>
+        </div>
+    </div>
+    
+    <!-- Domain Editor Modal -->
+    <div class="modal" id="domainModal">
+        <div class="modal-content">
+            <h2>🔐 Edit Domains</h2>
+            <div class="form-group">
+                <label for="adminPassword">Enter Password (123)</label>
+                <input type="password" id="adminPassword" placeholder="Enter password">
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="verifyPassword()">Unlock</button>
+                <button class="cancel-btn" onclick="closeDomainModal()">Cancel</button>
+            </div>
+            
+            <div id="domainEditor" style="display: none;">
+                <div class="form-group">
+                    <label for="newDomain">Add New Domain</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="newDomain" placeholder="e.g., company.com">
+                        <button onclick="addDomain()" style="width: auto;">Add</button>
+                    </div>
+                </div>
+                <div class="domain-list" id="domainList"></div>
+                <div class="modal-buttons">
+                    <button class="cancel-btn" onclick="closeDomainModal()">Close</button>
+                </div>
+            </div>
         </div>
     </div>
     
     <script>
+        const STORAGE_KEY = 'generated_emails';
         let lastGeneratedEmail = '';
+        let deleteMode = false;
         
-        async function generateEmail() {
+        // Load emails from localStorage
+        function getEmails() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : [];
+        }
+        
+        // Save emails to localStorage
+        function saveEmails(emails) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(emails));
+        }
+        
+        // Generate email
+        function generateEmail() {
             const name = document.getElementById('name').value.trim();
-            const domain = document.getElementById('domain').value.trim();
+            const domain = document.getElementById('domain').value;
             
             if (!name || !domain) {
-                alert('Please enter both name and domain');
+                alert('Please enter name and select a domain');
                 return;
             }
             
-            try {
-                const response = await fetch('/api/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, domain })
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    lastGeneratedEmail = data.email;
-                    document.getElementById('emailText').textContent = data.email;
-                    document.getElementById('result').classList.add('show');
-                    loadEmails();
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            } catch (err) {
-                alert('Failed to generate email');
+            // Convert name to email format (lowercase, replace spaces with dots)
+            const email = name.toLowerCase().replace(/\s+/g, '.') + '@' + domain;
+            
+            // Get existing emails
+            const emails = getEmails();
+            
+            // Add new email at the beginning
+            emails.unshift({
+                email: email,
+                name: name,
+                domain: domain,
+                createdAt: new Date().toISOString()
+            });
+            
+            // Keep only last 50 emails
+            if (emails.length > 50) {
+                emails.splice(50);
             }
+            
+            // Save to localStorage
+            saveEmails(emails);
+            
+            // Display result
+            lastGeneratedEmail = email;
+            document.getElementById('emailText').textContent = email;
+            document.getElementById('result').classList.add('show');
+            
+            // Update the list
+            renderEmailList();
+            
+            // Clear input fields
+            document.getElementById('name').value = '';
+            document.getElementById('domain').value = '';
         }
         
+        // Copy email to clipboard
         function copyEmail() {
             navigator.clipboard.writeText(lastGeneratedEmail).then(() => {
                 const btn = document.querySelector('.copy-btn');
@@ -239,31 +428,193 @@
             });
         }
         
-        async function loadEmails() {
-            try {
-                const response = await fetch('/api/emails');
-                const emails = await response.json();
-                
-                const list = document.getElementById('emailList');
-                list.innerHTML = emails.slice(0, 5).map(email => `
-                    <li class="email-item">
-                        <span class="email-item-email">${email.email}</span>
-                        <button class="copy-btn" onclick="copyFromList('${email.email}')">Copy</button>
-                    </li>
-                `).join('');
-            } catch (err) {
-                console.error('Failed to load emails');
-            }
-        }
-        
+        // Copy from list
         function copyFromList(email) {
             navigator.clipboard.writeText(email).then(() => {
-                alert('Copied: ' + email);
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = originalText, 2000);
             });
         }
         
+        // Render email list
+        function renderEmailList() {
+            const emails = getEmails();
+            const list = document.getElementById('emailList');
+            
+            if (emails.length === 0) {
+                list.innerHTML = '<li class="empty-state">No emails generated yet</li>';
+                return;
+            }
+            
+            list.innerHTML = emails.map((item, index) => `
+                <li class="email-item">
+                    <span class="email-item-email">${item.email}</span>
+                    <div style="display: flex; gap: 5px;">
+                        <button class="copy-btn email-item-copy" onclick="copyFromList('${item.email}')">Copy</button>
+                        ${deleteMode ? `<button class="email-item-delete" onclick="deleteEmail(${index})">Delete</button>` : ''}
+                    </div>
+                </li>
+            `).join('');
+        }
+        
         // Load emails on page load
-        loadEmails();
+        renderEmailList();
+        
+        // Export all emails to CSV
+        function exportEmails() {
+            const emails = getEmails();
+            
+            if (emails.length === 0) {
+                alert('No emails to export');
+                return;
+            }
+            
+            // Create CSV content
+            const headers = ['Email', 'Name', 'Domain', 'Created At'];
+            const rows = emails.map(e => [
+                e.email,
+                e.name,
+                e.domain,
+                new Date(e.createdAt).toLocaleString()
+            ]);
+            
+            const csv = [headers, ...rows]
+                .map(row => row.map(cell => `"${cell}"`).join(','))
+                .join('\n');
+            
+            // Download file
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `emails-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // Domain management
+        const DOMAINS_KEY = 'email_domains';
+        const DEFAULT_DOMAINS = ['gmail.com', 'outlook.com', 'seznam.cz'];
+        
+        function getDomains() {
+            const data = localStorage.getItem(DOMAINS_KEY);
+            return data ? JSON.parse(data) : DEFAULT_DOMAINS;
+        }
+        
+        function saveDomains(domains) {
+            localStorage.setItem(DOMAINS_KEY, JSON.stringify(domains));
+            updateDomainDropdown();
+        }
+        
+        function updateDomainDropdown() {
+            const domains = getDomains();
+            const select = document.getElementById('domain');
+            const currentValue = select.value;
+            select.innerHTML = '<option value="">Select domain...</option>' +
+                domains.map(d => `<option value="${d}">${d}</option>`).join('');
+            if (currentValue && domains.includes(currentValue)) {
+                select.value = currentValue;
+            }
+        }
+        
+        function openDomainEditor() {
+            const modal = document.getElementById('domainModal');
+            modal.classList.add('show');
+            document.getElementById('adminPassword').value = '';
+            document.getElementById('domainEditor').style.display = 'none';
+            
+            // Close modal when clicking outside
+            modal.onclick = function(event) {
+                if (event.target === modal) {
+                    closeDomainModal();
+                }
+            };
+        }
+        
+        function closeDomainModal() {
+            document.getElementById('domainModal').classList.remove('show');
+        }
+        
+        function verifyPassword() {
+            const password = document.getElementById('adminPassword').value;
+            if (password === '123') {
+                document.getElementById('domainEditor').style.display = 'block';
+                renderDomainList();
+            } else {
+                alert('Incorrect password');
+            }
+        }
+        
+        function renderDomainList() {
+            const domains = getDomains();
+            const list = document.getElementById('domainList');
+            list.innerHTML = domains.map((d, i) => `
+                <div class="domain-item">
+                    <span>${d}</span>
+                    <div>
+                        <button class="delete-btn" onclick="deleteDomain(${i})">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function addDomain() {
+            const newDomain = document.getElementById('newDomain').value.trim().toLowerCase();
+            if (!newDomain) {
+                alert('Please enter a domain');
+                return;
+            }
+            const domains = getDomains();
+            if (domains.includes(newDomain)) {
+                alert('Domain already exists');
+                return;
+            }
+            domains.push(newDomain);
+            saveDomains(domains);
+            document.getElementById('newDomain').value = '';
+            renderDomainList();
+        }
+        
+        function deleteDomain(index) {
+            if (confirm('Are you sure you want to delete this domain?')) {
+                const domains = getDomains();
+                domains.splice(index, 1);
+                saveDomains(domains);
+                renderDomainList();
+            }
+        }
+        
+        // Initialize domains on page load
+        updateDomainDropdown();
+        
+        function toggleDeleteMode() {
+            const password = prompt('Enter password to enable delete mode:');
+            if (password === '123') {
+                deleteMode = !deleteMode;
+                const btn = document.getElementById('deleteModeBtn');
+                if (deleteMode) {
+                    btn.textContent = '❌ Exit Delete';
+                    btn.style.background = '#dc3545';
+                } else {
+                    btn.textContent = '🗑️ Delete Mode';
+                    btn.style.background = '';
+                }
+                renderEmailList();
+            } else if (password !== null) {
+                alert('Incorrect password');
+            }
+        }
+        
+        function deleteEmail(index) {
+            if (confirm('Are you sure you want to delete this email?')) {
+                const emails = getEmails();
+                emails.splice(index, 1);
+                saveEmails(emails);
+                renderEmailList();
+            }
+        }
     </script>
 </body>
 </html>
