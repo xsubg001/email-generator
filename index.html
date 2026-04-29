@@ -363,19 +363,52 @@
         let lastGeneratedEmail = '';
         let deleteMode = false;
         
-        // Load emails from localStorage
-        function getEmails() {
+        // JSONBin configuration
+        const JSONBIN_API_KEY = '$2a$10$beAVa9WiIA0n1P7PxK8gNurqI9h9zJ6CyaExzKr.z8sR.M7enRbXG';
+        const JSONBIN_COLLECTION_ID = '69f20655aaba882197502c84';
+        const JSONBIN_BASE_URL = 'https://api.jsonbin.io/v3/b';
+        
+        // Load emails from JSONBin or localStorage
+        async function getEmails() {
+            try {
+                const response = await fetch(`${JSONBIN_BASE_URL}/${JSONBIN_COLLECTION_ID}/latest`, {
+                    headers: {
+                        'X-Access-Key': JSONBIN_API_KEY
+                    }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.record || [];
+                }
+            } catch (e) {
+                console.log('JSONBin unavailable, using localStorage');
+            }
+            // Fallback to localStorage
             const data = localStorage.getItem(STORAGE_KEY);
             return data ? JSON.parse(data) : [];
         }
         
-        // Save emails to localStorage
-        function saveEmails(emails) {
+        // Save emails to JSONBin and localStorage
+        async function saveEmails(emails) {
+            // Save to localStorage as backup
             localStorage.setItem(STORAGE_KEY, JSON.stringify(emails));
+            
+            try {
+                await fetch(`${JSONBIN_BASE_URL}/${JSONBIN_COLLECTION_ID}`, {
+                    method: 'PUT',
+                    headers: {
+                        'X-Access-Key': JSONBIN_API_KEY,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(emails)
+                });
+            } catch (e) {
+                console.log('Failed to save to JSONBin, local backup saved');
+            }
         }
         
         // Generate email
-        function generateEmail() {
+        async function generateEmail() {
             const name = document.getElementById('name').value.trim();
             const domain = document.getElementById('domain').value;
             
@@ -388,7 +421,7 @@
             const email = name.toLowerCase().replace(/\s+/g, '.') + '@' + domain;
             
             // Get existing emails
-            const emails = getEmails();
+            const emails = await getEmails();
             
             // Add new email at the beginning
             emails.unshift({
@@ -403,8 +436,8 @@
                 emails.splice(50);
             }
             
-            // Save to localStorage
-            saveEmails(emails);
+            // Save to JSONBin and localStorage
+            await saveEmails(emails);
             
             // Display result
             lastGeneratedEmail = email;
@@ -412,7 +445,7 @@
             document.getElementById('result').classList.add('show');
             
             // Update the list
-            renderEmailList();
+            await renderEmailList();
             
             // Clear input fields
             document.getElementById('name').value = '';
@@ -439,8 +472,8 @@
         }
         
         // Render email list
-        function renderEmailList() {
-            const emails = getEmails();
+        async function renderEmailList() {
+            const emails = await getEmails();
             const list = document.getElementById('emailList');
             
             if (emails.length === 0) {
@@ -463,8 +496,8 @@
         renderEmailList();
         
         // Export all emails to CSV
-        function exportEmails() {
-            const emails = getEmails();
+        async function exportEmails() {
+            const emails = await getEmails();
             
             if (emails.length === 0) {
                 alert('No emails to export');
@@ -607,12 +640,12 @@
             }
         }
         
-        function deleteEmail(index) {
+        async function deleteEmail(index) {
             if (confirm('Are you sure you want to delete this email?')) {
-                const emails = getEmails();
+                const emails = await getEmails();
                 emails.splice(index, 1);
-                saveEmails(emails);
-                renderEmailList();
+                await saveEmails(emails);
+                await renderEmailList();
             }
         }
     </script>
