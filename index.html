@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Generator</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e1e1;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9ff;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .result.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .result-label {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 8px;
+        }
+        
+        .email-display {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .email-text {
+            flex: 1;
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            word-break: break-all;
+        }
+        
+        .copy-btn {
+            width: auto;
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+        
+        .history {
+            margin-top: 30px;
+        }
+        
+        .history h2 {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .email-list {
+            list-style: none;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .email-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            gap: 10px;
+        }
+        
+        .email-item-email {
+            color: #555;
+            font-size: 14px;
+            word-break: break-all;
+            flex: 1;
+        }
+        
+        .email-item-copy {
+            width: auto;
+            padding: 6px 12px;
+            font-size: 12px;
+            background: #6c757d;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: #888;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📧 Email Generator</h1>
+        
+        <div class="form-group">
+            <label for="name">Name</label>
+            <input type="text" id="name" placeholder="Enter name (e.g., John Doe)">
+        </div>
+        
+        <div class="form-group">
+            <label for="domain">Domain</label>
+            <input type="text" id="domain" placeholder="Enter domain (e.g., example.com)">
+        </div>
+        
+        <button onclick="generateEmail()">Generate Email</button>
+        
+        <div class="result" id="result">
+            <div class="result-label">Generated Email:</div>
+            <div class="email-display">
+                <span class="email-text" id="emailText"></span>
+                <button class="copy-btn" onclick="copyEmail()">Copy</button>
+            </div>
+        </div>
+        
+        <div class="history">
+            <h2>Recent Emails</h2>
+            <ul class="email-list" id="emailList">
+                <li class="empty-state">No emails generated yet</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        const STORAGE_KEY = 'generated_emails';
+        let lastGeneratedEmail = '';
+        
+        // Load emails from localStorage
+        function getEmails() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : [];
+        }
+        
+        // Save emails to localStorage
+        function saveEmails(emails) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(emails));
+        }
+        
+        // Generate email
+        function generateEmail() {
+            const name = document.getElementById('name').value.trim();
+            const domain = document.getElementById('domain').value.trim();
+            
+            if (!name || !domain) {
+                alert('Please enter both name and domain');
+                return;
+            }
+            
+            // Convert name to email format (lowercase, replace spaces with dots)
+            const email = name.toLowerCase().replace(/\s+/g, '.') + '@' + domain;
+            
+            // Get existing emails
+            const emails = getEmails();
+            
+            // Add new email at the beginning
+            emails.unshift({
+                email: email,
+                name: name,
+                domain: domain,
+                createdAt: new Date().toISOString()
+            });
+            
+            // Keep only last 50 emails
+            if (emails.length > 50) {
+                emails.splice(50);
+            }
+            
+            // Save to localStorage
+            saveEmails(emails);
+            
+            // Display result
+            lastGeneratedEmail = email;
+            document.getElementById('emailText').textContent = email;
+            document.getElementById('result').classList.add('show');
+            
+            // Update the list
+            renderEmailList();
+        }
+        
+        // Copy email to clipboard
+        function copyEmail() {
+            navigator.clipboard.writeText(lastGeneratedEmail).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = 'Copy', 2000);
+            });
+        }
+        
+        // Copy from list
+        function copyFromList(email) {
+            navigator.clipboard.writeText(email).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = originalText, 2000);
+            });
+        }
+        
+        // Render email list
+        function renderEmailList() {
+            const emails = getEmails();
+            const list = document.getElementById('emailList');
+            
+            if (emails.length === 0) {
+                list.innerHTML = '<li class="empty-state">No emails generated yet</li>';
+                return;
+            }
+            
+            list.innerHTML = emails.map((item, index) => `
+                <li class="email-item">
+                    <span class="email-item-email">${item.email}</span>
+                    <button class="copy-btn email-item-copy" onclick="copyFromList('${item.email}')">Copy</button>
+                </li>
+            `).join('');
+        }
+        
+        // Load emails on page load
+        renderEmailList();
+    </script>
+</body>
+</html>
